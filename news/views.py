@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect
-from django.http  import HttpResponse, Http404
+from django.http  import HttpResponse, Http404, HttpResponseRedirect
 import datetime as dt
-from . models import Article
+from . models import Article, NewsLetterRecipients
 from django.core.exceptions import ObjectDoesNotExist
+from .forms import NewsLetterForm
 #................
 # Create your views here.
 def welcome(request):
@@ -14,7 +15,18 @@ def welcome(request):
 def news_today(request):
     date = dt.date.today()
     news = Article.todays_news()
-    return render(request, 'all-news/today-news.html', {"date": date, "news": news})
+    if request.method == 'POST':
+        form = NewsLetterForm(request.POST)
+        if form.is_valid():
+            name = form.cleaned_data['your_name']
+            email = form.cleaned_data['email']
+            recipient = NewsLetterRecipients(name = name,email =email)
+            recipient.save()
+            HttpResponseRedirect('news_today')
+            # print('valid')
+    else:
+        form = NewsLetterForm()
+    return render(request, 'all-news/today-news.html', {"date": date, "news": news, "letterForm":form})
 
 # def convert_dates(dates):
 
@@ -70,3 +82,4 @@ def article(request,article_id):
     except ObjectDoesNotExist:
         raise Http404()
     return render(request,"all-news/article.html", {"article":article})
+
