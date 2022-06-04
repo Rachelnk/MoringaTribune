@@ -4,12 +4,14 @@ import datetime as dt
 from . models import Article, NewsLetterRecipients
 from django.core.exceptions import ObjectDoesNotExist
 from .forms import NewsLetterForm
+from .email import send_welcome_email
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login, authenticate
+from django.contrib.auth.forms import UserCreationForm
 #................
 # Create your views here.
 def welcome(request):
-    return render(request, 'welcome.html')
-    # return HttpResponse("Welcome!!")
-
+    return render(request, 'welcome.html')   
 
 
 def news_today(request):
@@ -22,6 +24,8 @@ def news_today(request):
             email = form.cleaned_data['email']
             recipient = NewsLetterRecipients(name = name,email =email)
             recipient.save()
+            # call welcome email after passing the user name and email
+            send_welcome_email(name,email)
             HttpResponseRedirect('news_today')
             # print('valid')
     else:
@@ -75,11 +79,26 @@ def search_results(request):
     else:
         message = "You haven't searched for any term"
         return render(request, 'all-news/search.html',{"message":message})
-
+@login_required(login_url='/accounts/login/')
 def article(request,article_id):
     try:
         article = Article.objects.get(id = article_id)
     except ObjectDoesNotExist:
         raise Http404()
     return render(request,"all-news/article.html", {"article":article})
+
+
+def register(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password1')
+            user = authenticate(username = username, password = password)
+            login(request, user)
+            return redirect('newsToday')
+    else:
+        form = UserCreationForm()
+    return render(request, 'registration/registration_form.html', {'form': form})
 
